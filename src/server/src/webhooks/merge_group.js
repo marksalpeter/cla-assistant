@@ -21,7 +21,6 @@ module.exports = {
         return ['checks_requested'].indexOf(req.args.action) > -1 && (req.args.repository && req.args.repository.private == false)
     },
     handle: async function (req, res) {
-        res.status(200).send('OK - Will be working on it')
         const args = {
             owner: req.args.repository.owner.login,
             repoId: req.args.repository.id,
@@ -43,8 +42,10 @@ module.exports = {
                 }
                 await status.updateForMergeQueue(args)
             }
+            return res.status(200).send('OK')
         } catch (e) {
-            logger.warn(e)
+            logger.error(e)
+            return res.status(500).send('Internal Server Error')
         }
     }
 }

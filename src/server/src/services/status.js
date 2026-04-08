@@ -86,6 +86,7 @@ const createStatus = async (args, context, description, state, target_url) => {
         })
     } catch (error) {
         logger.warn('Error on Create Status, possible cause - wrong token, saved token does not have enough rights: ')
+        throw error
     }
 }
 
