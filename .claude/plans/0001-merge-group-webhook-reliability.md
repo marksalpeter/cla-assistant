@@ -3,7 +3,7 @@
 ## Sprint Checklist
 
 - [x] [1 — `merge_group`: late ack + tests](#action-item-1--merge_group-late-ack--tests)
-- [ ] [2 — Circuit breaker: `merge_group` handler](#action-item-2--circuit-breaker-merge_group-handler)
+- [x] [2 — Circuit breaker: `merge_group` handler](#action-item-2--circuit-breaker-merge_group-handler)
 
 ---
 

@@ -14,6 +14,7 @@ const logger = require('../../../server/src/services/logger')
 
 // webhook under test
 const webhook = require('../../../server/src/webhooks/merge_group')
+const { breaker } = webhook
 
 function merge_group(req, res) {
     if (webhook.accepts(req)) {
@@ -60,6 +61,7 @@ describe('webhook merge_group', () => {
     })
 
     afterEach(() => {
+        breaker.close()
         cla.getLinkedItem.restore()
         status.updateForMergeQueue.restore()
         logger.error.restore()
@@ -125,6 +127,13 @@ describe('webhook merge_group', () => {
             await merge_group(testReq, res)
             assert.equal(responseStatus, 200)
             assert(!status.updateForMergeQueue.called)
+        })
+
+        it('should return 500 if circuit breaker is open', async () => {
+            breaker.open()
+
+            await merge_group(testReq, res)
+            assert.equal(responseStatus, 500)
         })
     })
 })

@@ -10,9 +10,34 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 // services
+const CircuitBreaker = require('opossum')
 const status = require('../services/status')
 const cla = require('../services/cla')
 const logger = require('../services/logger')
+
+async function processMergeGroup(args) {
+    const item = await cla.getLinkedItem(args)
+    let nullCla = !item.gist
+    let isExcluded = item.orgId && item.isRepoExcluded && item.isRepoExcluded(args.repo)
+    if (!nullCla && !isExcluded) {
+        args.token = item.token
+        args.gist = item.gist
+        if (item.repoId) {
+            args.orgId = undefined
+        }
+        await status.updateForMergeQueue(args)
+    }
+}
+
+const breaker = new CircuitBreaker(processMergeGroup, {
+    timeout: 25000,
+    errorThresholdPercentage: 50,
+    resetTimeout: 30000,
+    volumeThreshold: 3
+})
+breaker.on('open', () => logger.error('merge_group circuit breaker OPEN'))
+breaker.on('halfOpen', () => logger.info('merge_group circuit breaker HALF-OPEN'))
+breaker.on('close', () => logger.info('merge_group circuit breaker CLOSED'))
 
 module.exports = {
     accepts: function (req) {
@@ -31,21 +56,12 @@ module.exports = {
         args.handleDelay = req.args.handleDelay != undefined ? req.args.handleDelay : 1 // needed for unitTests
 
         try {
-            const item = await cla.getLinkedItem(args)
-            let nullCla = !item.gist
-            let isExcluded = item.orgId && item.isRepoExcluded && item.isRepoExcluded(args.repo)
-            if (!nullCla && !isExcluded) {
-                args.token = item.token
-                args.gist = item.gist
-                if (item.repoId) {
-                    args.orgId = undefined
-                }
-                await status.updateForMergeQueue(args)
-            }
+            await breaker.fire(args)
             return res.status(200).send('OK')
         } catch (e) {
             logger.error(e)
             return res.status(500).send('Internal Server Error')
         }
-    }
+    },
+    breaker
 }
